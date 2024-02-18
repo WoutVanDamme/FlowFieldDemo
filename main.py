@@ -4,7 +4,6 @@ import sys
 
 
 
-
 ###
 
 start_pos = (9,9) # code 68
@@ -23,8 +22,8 @@ grid = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ]
 
-grid[start_pos[1]][start_pos[0]] = 68
-grid[end_pos[1]][end_pos[0]] = 69
+# grid[start_pos[1]][start_pos[0]] = 68
+# grid[end_pos[1]][end_pos[0]] = 69
 
 ff_grid = []
 
@@ -57,6 +56,10 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+    
+
+    mouse_pos = pygame.mouse.get_pos()
+    start_pos = (mouse_pos[0]//GRID_SIZE, mouse_pos[1]//GRID_SIZE)
 
 
     screen.fill((0,0,0))
@@ -81,20 +84,27 @@ while running:
                 pass
             
             if ff_grid != []:
+                node = ff_grid[j][i]
+                center=  (i*GRID_SIZE + GRID_SIZE//2,j*GRID_SIZE+ GRID_SIZE//2)
                 font = pygame.font.Font(None, 15)
-                text = font.render(str(ff_grid[j][i].dist), True, WHITE)
+                text = font.render(str(node.dist), True, WHITE)
                 text_rect = text.get_rect()
-                text_rect.center = (i*GRID_SIZE + GRID_SIZE//2,j*GRID_SIZE+ GRID_SIZE//2)
+                text_rect.center = center
                 screen.blit(text, text_rect)
 
+                pygame.draw.line(screen, PINK, center, (center[0] + node.vector[0]*20, center[1] + node.vector[1]*20), 2)
 
     # FLOW FIELD
     # https://www.youtube.com/watch?v=ZJZu3zLMYAc
+
+
+    
 
     class Node:
         def __init__(self, pos, dist):
             self.pos = pos
             self.dist = dist
+            self.vector = (0,0)
 
     ff_grid = []
 
@@ -106,42 +116,35 @@ while running:
 
     ff_grid[start_pos[1]][start_pos[0]].dist = 0
 
+
+    
     def get_neighbors(cur_node):
-        # get neighbors
-        c_node = cur_node.pos
-        neighbors = []
-        if c_node[0]-1 >= 0:
-            node = ff_grid[c_node[0]-1][c_node[1]]
-            neighbors.append(node)
-        if c_node[0]+1 < len(ff_grid[c_node[1]]):
-            node = ff_grid[c_node[0]+1][c_node[1]]
-            neighbors.append(node)
-        if c_node[1]-1 >= 0:
-            node = ff_grid[c_node[0]][c_node[1]-1]
-            neighbors.append(node)
-        if c_node[1]+1 < len(grid):
-            node = ff_grid[c_node[0]][c_node[1]+1]
-            neighbors.append(node)
-        return neighbors
+        cp = cur_node.pos
+        xs = []
+        for i in range(cp[1]-1, cp[1]+2):
+            for j in range(cp[0]-1, cp[0]+2):
+                if i >= 0 and i < len(grid) and j >= 0 and j < len(grid[i]):
+                    xs.append(ff_grid[i][j])
+        return xs
+
+
+    
     
     def helper(visted_nodes, open_list):
 
-        # TODO check if end is reached
         if len(open_list) < 1:
-            print('DONE')
+            #print('DONE')
             return
         cur_node = open_list[0]
 
         neighbors = get_neighbors(cur_node)
 
         # remove cur_opened node and add the neighbors
-        # TODO check if it is a wall before adding it to open list
         open_list = open_list[1:]
         for neighbor in neighbors:
             if grid[neighbor.pos[1]][neighbor.pos[0]] != 1:
                 if not neighbor in visted_nodes:
                     neighbor.dist = cur_node.dist + 1
-                    #ff_grid[neighbor.pos[1]][neighbor.pos[0]] = neighbor
                     open_list.append(neighbor)
                     visted_nodes.append(neighbor)
                 else: # visited before
@@ -152,15 +155,45 @@ while running:
         
         #print('new open list: ', open_list)
 
-
         helper(visted_nodes, open_list)
+
+    def kernel_vec(node):
+        neighbors = get_neighbors(node)
+
+        #nv = [Node((n.pos[0]-node.pos[0], n.pos[1]-node.pos[1]), n.dist) for n in neighbors]
+        nv = []
+        for n in neighbors:
+            nn = Node((n.pos[0]-node.pos[0], n.pos[1]-node.pos[1]), n.dist)
+            nv.append(nn)
+
+
+        # calculate vector
+        vector = (0,0)
+        small_node = None
+        for n in nv:
+            if n.dist == 0:
+                vector = n.pos
+                break
+            else:
+
+                if small_node == None or (n.dist < small_node.dist and n.dist != float('inf')):
+                    small_node = n
+                    vector = n.pos
+
+        node.vector = vector
+
+
+
+    def kernel_conv():
+        for i in range(len(ff_grid)):
+            for j in range(len(ff_grid[i])):
+                kernel_vec(ff_grid[i][j])
 
 
     visted_nodes = [ff_grid[start_pos[1]][start_pos[0]]]
     open_list = [ff_grid[start_pos[1]][start_pos[0]]]
     helper(visted_nodes, open_list)
-    
-
+    kernel_conv()
 
 
     pygame.display.flip()
