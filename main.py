@@ -135,32 +135,31 @@ while running:
 
     
     
+    
     def helper(visted_nodes, open_list):
-
-        if len(open_list) < 1:
-            #print('DONE')
-            return
-        cur_node = open_list[0]
-
-        neighbors = get_neighbors(cur_node, give_dist=True)
-
-        # remove cur_opened node and add the neighbors
-        open_list = open_list[1:]
-        for neighbor in neighbors:
-            if grid[neighbor['node'].pos[1]][neighbor['node'].pos[0]] != 1:
-                if not neighbor['node'] in visted_nodes:
-                    neighbor['node'].dist = cur_node.dist + neighbor['a']
-                    open_list.append(neighbor['node'])
-                    visted_nodes.append(neighbor['node'])
-                else: # visited before
-                    # dist nonsense ...
-                    if neighbor['node'].dist > cur_node.dist + neighbor['a']:
-                        neighbor['node'].dist = cur_node.dist + neighbor['a']
-
         
-        #print('new open list: ', open_list)
+        while True:
+            if len(open_list) < 1:
+            #print('DONE')
+                return
+            cur_node = open_list[0]
 
-        helper(visted_nodes, open_list)
+            neighbors = get_neighbors(cur_node, give_dist=True)
+
+            # remove cur_opened node and add the neighbors
+            open_list = open_list[1:]
+            for neighbor in neighbors:
+                if grid[neighbor['node'].pos[1]][neighbor['node'].pos[0]] != 1:
+                    if not neighbor['node'] in visted_nodes:
+                        neighbor['node'].dist = cur_node.dist + neighbor['a']
+                        open_list.append(neighbor['node'])
+                        visted_nodes.append(neighbor['node'])
+                    else: # visited before
+                        # dist nonsense ...
+                        if neighbor['node'].dist > cur_node.dist + neighbor['a']:
+                            neighbor['node'].dist = cur_node.dist + neighbor['a']
+
+
 
     def kernel_vec(node):
         neighbors = get_neighbors(node)
