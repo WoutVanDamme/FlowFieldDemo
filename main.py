@@ -1,9 +1,9 @@
 import pygame
 import sys
+import math
 
 
-
-
+DISPLAY_DISTANCE = False
 ###
 
 start_pos = (9,9) # code 68
@@ -86,19 +86,17 @@ while running:
             if ff_grid != []:
                 node = ff_grid[j][i]
                 center=  (i*GRID_SIZE + GRID_SIZE//2,j*GRID_SIZE+ GRID_SIZE//2)
-                font = pygame.font.Font(None, 15)
-                text = font.render(str(node.dist), True, WHITE)
-                text_rect = text.get_rect()
-                text_rect.center = center
-                screen.blit(text, text_rect)
+                
+                if DISPLAY_DISTANCE:
+                    font = pygame.font.Font(None, 15)
+                    text = font.render(str(node.dist), True, WHITE)
+                    text_rect = text.get_rect()
+                    text_rect.center = center
+                    screen.blit(text, text_rect)
 
                 pygame.draw.line(screen, PINK, center, (center[0] + node.vector[0]*20, center[1] + node.vector[1]*20), 2)
 
     # FLOW FIELD
-    # https://www.youtube.com/watch?v=ZJZu3zLMYAc
-
-
-    
 
     class Node:
         def __init__(self, pos, dist):
@@ -118,13 +116,20 @@ while running:
 
 
     
-    def get_neighbors(cur_node):
+    def get_neighbors(cur_node, give_dist=False):
         cp = cur_node.pos
         xs = []
         for i in range(cp[1]-1, cp[1]+2):
             for j in range(cp[0]-1, cp[0]+2):
                 if i >= 0 and i < len(grid) and j >= 0 and j < len(grid[i]):
-                    xs.append(ff_grid[i][j])
+                    if give_dist:
+                        d = 1
+                        if (i == cp[1]-1 and j == cp[0]-1) or (i == cp[1]+1 and j == cp[0]+1) or (i == cp[1]-1 and j == cp[0]+1) or (i == cp[1]+1 and j == cp[0]-1):
+                            d = math.sqrt(2)
+                        xs.append({'node': ff_grid[i][j], 'a': d})
+                    else:
+                        xs.append(ff_grid[i][j])
+
         return xs
 
 
@@ -137,20 +142,20 @@ while running:
             return
         cur_node = open_list[0]
 
-        neighbors = get_neighbors(cur_node)
+        neighbors = get_neighbors(cur_node, give_dist=True)
 
         # remove cur_opened node and add the neighbors
         open_list = open_list[1:]
         for neighbor in neighbors:
-            if grid[neighbor.pos[1]][neighbor.pos[0]] != 1:
-                if not neighbor in visted_nodes:
-                    neighbor.dist = cur_node.dist + 1
-                    open_list.append(neighbor)
-                    visted_nodes.append(neighbor)
+            if grid[neighbor['node'].pos[1]][neighbor['node'].pos[0]] != 1:
+                if not neighbor['node'] in visted_nodes:
+                    neighbor['node'].dist = cur_node.dist + neighbor['a']
+                    open_list.append(neighbor['node'])
+                    visted_nodes.append(neighbor['node'])
                 else: # visited before
                     # dist nonsense ...
-                    if neighbor.dist > cur_node.dist + 1:
-                        neighbor.dist = cur_node.dist + 1
+                    if neighbor['node'].dist > cur_node.dist + neighbor['a']:
+                        neighbor['node'].dist = cur_node.dist + neighbor['a']
 
         
         #print('new open list: ', open_list)
