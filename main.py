@@ -14,10 +14,10 @@ grid = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 1, 1, 1, 0, 1, 0],
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    [0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 1, 0, 0, 1, 1, 0],
+    [0, 0, 1, 1, 1, 0, 1, 1, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ]
@@ -74,6 +74,10 @@ while running:
 
             if grid[j][i] == 1:
                 pygame.draw.rect(screen, GREY, (i*GRID_SIZE,j*GRID_SIZE, GRID_SIZE, GRID_SIZE))
+            elif grid[j][i] == 0 and ff_grid != []:
+                a = ff_grid[j][i].dist/18
+                pygame.draw.rect(screen, ((1-a)*100,0,0), (i*GRID_SIZE,j*GRID_SIZE, GRID_SIZE, GRID_SIZE))
+                pass
             elif grid[j][i] == 68:
                 pygame.draw.rect(screen, ORANGE, (i*GRID_SIZE,j*GRID_SIZE, GRID_SIZE, GRID_SIZE))
             elif grid[j][i] == 69:
@@ -89,7 +93,7 @@ while running:
                 
                 if DISPLAY_DISTANCE:
                     font = pygame.font.Font(None, 15)
-                    text = font.render(str(node.dist), True, WHITE)
+                    text = font.render(str(round(node.dist, 1)), True, WHITE)
                     text_rect = text.get_rect()
                     text_rect.center = center
                     screen.blit(text, text_rect)
@@ -160,30 +164,65 @@ while running:
                             neighbor['node'].dist = cur_node.dist + neighbor['a']
 
 
+    def kernel_neighbors(cur_node, r=1):
+        cp = cur_node.pos
+        xs = []
+        for i in range(cp[1]-r, cp[1]+r+1):
+            for j in range(cp[0]-r, cp[0]+r+1):
+                if i >= 0 and i < len(grid) and j >= 0 and j < len(grid[i]):
+                    if not isWallBetween(cur_node, ff_grid[i][j]):
+                        xs.append(ff_grid[i][j])
+        return xs
+    
+    def isWallBetween(node1, node2):
+        return False
 
     def kernel_vec(node):
-        neighbors = get_neighbors(node)
+        neighbors = kernel_neighbors(node)
 
+        average = True
         #nv = [Node((n.pos[0]-node.pos[0], n.pos[1]-node.pos[1]), n.dist) for n in neighbors]
         nv = []
         for n in neighbors:
             nn = Node((n.pos[0]-node.pos[0], n.pos[1]-node.pos[1]), n.dist)
             nv.append(nn)
+            if grid[n.pos[1]][n.pos[0]] == 1:
+                average = False
 
 
-        # calculate vector
-        vector = (0,0)
-        small_node = None
-        for n in nv:
-            if n.dist == 0:
-                vector = n.pos
-                break
-            else:
+        vector = [0,0]
+        if average:
+            def F(x):
+                if x == 0:
+                    return 999999
+                return 1/x
+            total_weight = 0
+            for n in nv:
+                total_weight += F(n.dist)
+            for n in nv:
+                weight = F(n.dist)
+                vector[0] += n.pos[0] * (weight / total_weight)
+                vector[1] += n.pos[1] * (weight / total_weight)
+        else:
 
-                if small_node == None or (n.dist < small_node.dist and n.dist != float('inf')):
-                    small_node = n
-                    vector = n.pos
+            # calculate vector
+            small_node = None
+            for n in nv:
+                if n.dist == 0:
+                    vector = [n.pos[0], n.pos[1]]
+                    break
+                else:
 
+                    if small_node == None or (n.dist < small_node.dist and n.dist != float('inf')):
+                        small_node = n
+                        vector = [n.pos[0], n.pos[1]]
+
+        
+        # normalize vector
+        total_vector = abs(vector[0]) + abs(vector[1])
+        if total_vector > 0:
+            vector[0] = max(min(vector[0] / total_vector, 1), -1)
+            vector[1] = max(min(vector[1] / total_vector, 1), -1)
         node.vector = vector
 
 
